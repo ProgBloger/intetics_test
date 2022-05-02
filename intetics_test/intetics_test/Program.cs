@@ -1,12 +1,22 @@
 ﻿using System;
+using System.IO;
 
 namespace intetics_test
 {
     class Program
     {
+        const string inputFilename = "input.txt";
+        const string outputFilename = "output.txt";
+        const int MAX_BUFFER_SIZE = 512;
+
+        private static int readFileCoursor = 0;
+        private static int writeFileCoursor = 0;
+
+        private static StreamReader sr;
+        private static StreamWriter sw;
+
         static void Main(string[] args)
         {
-            const int MAX_BUFFER_SIZE = 512;
 
             char[] bufferPutData = new char[MAX_BUFFER_SIZE];
             char[] chunkGetData;
@@ -15,12 +25,13 @@ namespace intetics_test
             int chunkGetDataCoursor = 0;
             int chunkGetDataCount = 0;
 
+            bool readingGetDataFinished = false;
+
             do
             {
-                int upperBorder = 0;
-                bufferPutDataCoursor = 0;
+                int upperBorder = bufferPutDataCoursor;
                 bool maxBufferSizeReached = false;
-                bool readingGetDataFinished = false;
+                readingGetDataFinished = false;
 
                 // Call GetData while buffer doesn't holds all 512 chars
                 do
@@ -44,11 +55,11 @@ namespace intetics_test
                         bufferPutData[bufferPutDataCoursor++] = chunkGetData[chunkGetDataCoursor++];
                     }
                 }
-                while (!maxBufferSizeReached || readingGetDataFinished);
+                while (!maxBufferSizeReached && !readingGetDataFinished);
 
-                // If after buffer filled 512 chars
-                // And not all chars from GetData stored in buffer
-                // Memoise them by holding coursor to temp array
+                // If after bufferPutData filled 512 chars
+                // And not all chars from chunkGetData stored in bufferPutData
+                // Put it to bufferPutData and set bufferPutDataCoursor
 
                 // If buffer holds a 512 char array 
                 // Call PutData
@@ -57,31 +68,69 @@ namespace intetics_test
                 // Call PutData and exit loop
                 PutData(bufferPutData, bufferPutDataCoursor);
 
+                bufferPutDataCoursor = 0;
 
+                bool lastChunkNotSaved = chunkGetDataCoursor < chunkGetDataCount;
+                if(lastChunkNotSaved)
+                {
+                    while (chunkGetDataCoursor < chunkGetDataCount)
+                    {
+                        bufferPutData[bufferPutDataCoursor++] = chunkGetData[chunkGetDataCoursor++];
+                    }
+                }
             }
-            while (chunkGetDataCount != 0);
+            while (!readingGetDataFinished);
+
+            if(sr != null)
+            {
+                sr.Dispose();
+            }
+
+            if (sw != null)
+            {
+                sw.Close();
+                sw.Dispose();
+            }
         }
 
         public static int GetData(out char[] buf)
         {
-            buf = new char[5];
-
-            // The function provides input
-            // It returns the number of chars placed into buf array by each call
-            // A value can be less than or equal to 512
-            // Number varies from one call to the next
-            // If it's 0 then input is exhausted
-            
-            return buf.Length;
+            return Read(out buf);
         }
 
         public static void PutData(char[] buf, int count)
         {
-            // Accepts output
-            // Writes "count" chars to output from buf
-            // Count must represent the number of characters
-            // contained in byf and be 512 for every call, except the last call
-            // It may be less than 512 (even 0) for the last call only
+            Write(buf, count);
+        }
+
+        private static int Read(out char[] buf)
+        {
+            var random = new Random();
+            int fileLength = (int) (new FileInfo(inputFilename).Length);
+
+            if(sr == null)
+                sr = new StreamReader(inputFilename);
+            
+            int readChars = random.Next(0, MAX_BUFFER_SIZE);
+
+            if(fileLength < readFileCoursor + readChars)
+            {
+                readChars = fileLength - readFileCoursor;
+            }
+
+            buf = new char[readChars];
+
+            sr.Read(buf, 0, readChars);
+
+            return buf.Length;
+        }
+
+        private static void Write(char[] buf, int count)
+        {
+            if (sw == null)
+                sw = new StreamWriter(outputFilename);
+            
+            sw.Write(buf, 0, count);
         }
     }
 }
